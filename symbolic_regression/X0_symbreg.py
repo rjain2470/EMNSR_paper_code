@@ -1,5 +1,5 @@
 """
-Symbolic Regression for eigenvalues of the Laplacian associated to Maass newforms on X_0(N)
+Description: Symbolic Regression for eigenvalues of the Laplacian associated to Maass newforms on X_0(N).
 
 This script:
 1. Downloads the dataset of eigenvalues from the LMFDB
