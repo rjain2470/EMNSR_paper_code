@@ -26,7 +26,7 @@ print(f"Number of data points: {len(n_values)}")
 model = PySRRegressor(
     niterations=3000,
     binary_operators=["+", "-", "*", "/"],
-    unary_operators=["log"],
+    unary_operators=["log", "exp"],
     maxsize=20,
     maxdepth=6,
     population_size=100,
