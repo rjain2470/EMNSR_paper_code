@@ -1,7 +1,7 @@
 ''' 
 Description: Example use of symbolic regression in empirically recovering the prime number theorem.
 
-Dependencies: numpym sympy, pysr
+Dependencies: numpy, sympy, pysr
 Note: PySR requires a working Julia installation (>=1.6) and will automatically install required Julia packages on first use.
 '''
 
