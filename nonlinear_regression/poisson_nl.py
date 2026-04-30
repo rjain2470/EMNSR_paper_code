@@ -17,7 +17,7 @@ from sklearn.metrics import r2_score
  
  
 # =============================================================================
-#  1.  Gaussian probe
+#  1.  Gaussian test function
 # =============================================================================
  
 def gaussian_probe(c=0.0, sigma=1.0):
