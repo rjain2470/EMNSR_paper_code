@@ -1,6 +1,4 @@
 """
-main.py
--------
 Trains an MLP to predict Maass spectral parameters from geometric features,
 then evaluates predictions on X_0(N), the Bolza surface, and the Klein quartic.
 """
