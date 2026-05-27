@@ -194,3 +194,77 @@ model.fit(X, y)
 
 print("\nDiscovered expressions for lambda_k^{new}(N):")
 print(model)
+
+# =============================================================
+# Empirical slope plot (Figure 1)
+# =============================================================
+ 
+K_slope = 1000
+ 
+# Build padded r-value matrix; zeros mark missing entries
+X0N_r_vals = np.zeros((len(Ns), K_slope))
+for i, N in enumerate(Ns):
+    r = first_k_spectral_parameters(N, K_slope)
+    X0N_r_vals[i, :len(r)] = r
+ 
+# Least-squares slope of lambda vs k (no intercept) per level
+c_emp = []
+for i in range(len(Ns)):
+    r = X0N_r_vals[i].copy()
+    r = r[(r != 0.0) & np.isfinite(r)]
+    lam    = r**2 + 0.25
+    k_vals = np.arange(1, lam.size + 1, dtype=float)
+    c_emp.append(np.dot(k_vals, lam) / np.dot(k_vals, k_vals))
+ 
+c_emp   = np.array(c_emp,  dtype=float)
+c_model = 12.0 / np.array([phi(int(N)) for N in Ns], dtype=float)
+c_weyl  = (4.0 * pi) / vols_X0
+ 
+plt.figure(figsize=(9, 6))
+plt.scatter(Ns, c_emp,    label=r"Empirical slope $\hat{c}(N)$", alpha=0.8)
+plt.plot(   Ns, c_model,  color="green", label=r"$12/\varphi(N)$")
+plt.plot(   Ns, c_weyl,   color="red",   label=r"Weyl $4\pi/V_0(N)$")
+plt.yscale("log")
+plt.xlabel(r"$N$")
+plt.ylabel(r"$\hat{c}(N)$")
+plt.grid(True, which="both", alpha=0.3)
+plt.legend()
+plt.tight_layout()
+plt.savefig("figure1_slopes.pdf")
+plt.show()
+ 
+ 
+# =============================================================
+# Evaluation metrics for 12k / phi(N)
+# =============================================================
+ 
+k_col   = X[:, 0]
+phi_col = X[:, 3]
+y_hat   = 12.0 * k_col / phi_col
+ 
+residuals  = y - y_hat
+rel_errors = np.abs(residuals) / y
+ 
+# Spearman rank correlation
+spearman_r, _ = spearmanr(y, y_hat)
+ 
+# Median per-level R²
+per_level_r2 = []
+for N in Ns:
+    idx = X[:, 1] == N
+    if idx.sum() < 2:
+        continue
+    ss_r = np.sum((y[idx] - y_hat[idx]) ** 2)
+    ss_t = np.sum((y[idx] - y[idx].mean()) ** 2)
+    per_level_r2.append(1 - ss_r / ss_t)
+median_r2 = np.median(per_level_r2)
+ 
+# MRE: prime vs composite levels
+for label, mask_fn in [("prime",     isprime),
+                        ("composite", lambda n: not isprime(n))]:
+    idx   = np.array([i for i, row in enumerate(X) if mask_fn(int(row[1]))])
+    mre_l = rel_errors[idx].mean() * 100
+    print(f"MRE ({label:>9s}) = {mre_l:.2f}%")
+ 
+print(f"Spearman r         = {spearman_r:.4f}")
+print(f"Median per-level R²= {median_r2:.4f}")
