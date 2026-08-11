@@ -23,6 +23,8 @@ from symbolic_regression.pysr_tools import run_pysr, top_equations, SR_TIME_LIMI
 
 def _slope_vs_k(lam):
     """Least-squares slope of lambda vs k with no intercept."""
+    if lam.size == 0:
+        return np.nan
     kk = np.arange(1, lam.size + 1, dtype=float)
     return np.dot(kk, lam) / np.dot(kk, kk)
 
@@ -54,10 +56,13 @@ def main(cache=MAASS_CACHE, Ns=squarefree_Ns):
     print(f"  MRE prime levels     = {mre32['prime']:.2f}%")
     print(f"  MRE composite levels = {mre32['composite']:.2f}%")
 
-    # empirical vs discovered per-level slope c(N) = lambda / k
+    # empirical vs discovered per-level slope c(N) = lambda / k. Restrict to the
+    # levels that actually have spectral data (a level with no entries has no
+    # empirical slope to compare against).
     K_slope = 1000
+    Ns_slope = [N for N in Ns if len(first_k_spectral_parameters(N, 1, cache)) > 0]
     c_emp, c_disc = [], []
-    for N in Ns:
+    for N in Ns_slope:
         r = np.asarray(first_k_spectral_parameters(N, K_slope, cache), float)
         lam = r ** 2 + 0.25
         c_emp.append(_slope_vs_k(lam))
@@ -67,15 +72,15 @@ def main(cache=MAASS_CACHE, Ns=squarefree_Ns):
                               np.full_like(kk, sigma(N))])
         c_disc.append(_slope_vs_k(predict32(Xn)))
     c_emp, c_disc = np.array(c_emp), np.array(c_disc)
-    c_weyl = 4.0 * np.pi / np.array([volume_X0(N) for N in Ns], float)
+    c_weyl = 4.0 * np.pi / np.array([volume_X0(N) for N in Ns_slope], float)
 
     r2_slope = 1.0 - np.sum((c_emp - c_disc) ** 2) / np.sum((c_emp - c_emp.mean()) ** 2)
     print(f"\n  slope-level R^2 (discovered vs empirical c(N)) = {r2_slope:.4f}")
 
     plt.figure(figsize=(9, 6))
-    plt.scatter(Ns, c_emp, label=r"Empirical slope $c(N)$", alpha=0.8, zorder=3)
-    plt.plot(Ns, c_disc, color="C1", lw=2, label="Discovered (PySR)")
-    plt.plot(Ns, c_weyl, color="red", ls=":", lw=1,
+    plt.scatter(Ns_slope, c_emp, label=r"Empirical slope $c(N)$", alpha=0.8, zorder=3)
+    plt.plot(Ns_slope, c_disc, color="C1", lw=2, label="Discovered (PySR)")
+    plt.plot(Ns_slope, c_weyl, color="red", ls=":", lw=1,
              label=r"Weyl $4\pi/\mathrm{Vol}(X_0)$")
     plt.yscale("log"); plt.xlabel(r"$N$"); plt.ylabel(r"$c(N)$")
     plt.grid(True, which="both", alpha=0.3); plt.legend(); plt.tight_layout()
