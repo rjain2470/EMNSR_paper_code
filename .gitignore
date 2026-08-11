@@ -1,0 +1,20 @@
+# Data downloaded at runtime
+MaassForms.txt
+datasets.npz
+
+# PySR / SymbolicRegression.jl run artifacts
+outputs/
+hall_of_fame*
+*.pkl
+*.csv.bkup
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
