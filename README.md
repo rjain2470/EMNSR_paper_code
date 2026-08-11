@@ -4,18 +4,6 @@ Companion code for the paper **"Enumerating Maass Newforms by Symbolic
 Regression"** by Yang-Hui He, Ritik Jain, Kyu-Hwan Lee, Yau Liu, and Thomas
 Oliver.
 
-Symbolic regression on the spectral parameters of Maass newforms on the modular
-curves $X_0(N)$ recovers the counting law
-
-$$\Lambda_{\mathrm{new}}(x;N) \sim \frac{\varphi(N)\,x}{12},
-\qquad\Longleftrightarrow\qquad
-\lambda_k^{\mathrm{new}}(N) \sim \frac{12k}{\varphi(N)},$$
-
-which is then proved via Atkin–Lehner theory and Möbius inversion. Compared with
-Weyl's law for the full spectrum, $\lambda_k(N)\sim 4\pi k / \big(\tfrac{\pi}{3}
-N\prod_{p\mid N}(1+\tfrac1p)\big)$, the newform law replaces $\prod_{p\mid N}(1+
-1/p)$ with $\prod_{p\mid N}(1-1/p)=\varphi(N)/N$.
-
 ## Repository structure
 
 ```
