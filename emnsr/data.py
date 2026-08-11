@@ -13,17 +13,38 @@ ZENODO_URL = "https://zenodo.org/records/15490636/files/MaassForms.txt?download=
 LOCAL_PATH = "MaassForms.txt"
 
 
+def _download(url: str, dest: str) -> None:
+    """Stream `url` to `dest`, verifying the whole file arrived.
+
+    The data is written to a temporary ``.part`` file and only renamed into
+    place once the full ``Content-Length`` has been received, so a truncated
+    download (network drop mid-stream) never leaves a partial file that later
+    calls would mistake for a complete one.
+    """
+    tmp = dest + ".part"
+    with requests.get(url, stream=True, timeout=60) as r:
+        r.raise_for_status()
+        expected = r.headers.get("Content-Length")
+        expected = int(expected) if expected is not None else None
+        written = 0
+        with open(tmp, "wb") as f:
+            for blk in r.iter_content(chunk_size=1 << 20):
+                if blk:
+                    f.write(blk)
+                    written += len(blk)
+    if expected is not None and written != expected:
+        os.remove(tmp)
+        raise IOError(f"Incomplete download from {url}: "
+                      f"got {written} of {expected} bytes")
+    os.replace(tmp, dest)   # atomic; a partial .part never becomes `dest`
+
+
 def ensure_dataset(local_path: str = LOCAL_PATH, url: str = ZENODO_URL) -> str:
     """Download the Maass newform dataset if not already present."""
     if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
         return local_path
     print("Downloading Maass newform dataset...")
-    with requests.get(url, stream=True, timeout=60) as r:
-        r.raise_for_status()
-        with open(local_path, "wb") as f:
-            for blk in r.iter_content(chunk_size=1 << 20):
-                if blk:
-                    f.write(blk)
+    _download(url, local_path)
     return local_path
 
 
