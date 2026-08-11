@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emnsr"
+version = "1.0.0"
+description = "Enumerating Maass Newforms by Symbolic Regression — companion code"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+dependencies = [
+    "numpy",
+    "scipy",
+    "sympy",
+    "requests",
+    "matplotlib",
+    "pysr",
+    "torch",
+]
+
+[tool.setuptools]
+packages = ["emnsr", "symbolic_regression", "nonlinear_regression", "mlp"]
