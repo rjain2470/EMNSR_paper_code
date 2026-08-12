@@ -11,9 +11,9 @@ Feature vectors have the form ``[genus, volume, l_1, l_2, ...]``:
 import numpy as np
 
 from .config import K
-from .geometry import (genus_X0, volume_X0, geodesic_lengths_X0,
-                       sl2z_primitive_geodesics)
-from .spectral import squarefree_Ns
+from .geometric_features import (genus_X0, volume_X0, geodesic_lengths_X0,
+                                 sl2z_primitive_geodesics)
+from .spectral_features import squarefree_Ns
 
 # Shared SL_2(Z) geodesic pool, reused by the geometric SR experiment.
 GEO_POOL = sl2z_primitive_geodesics(50000)
