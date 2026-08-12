@@ -9,17 +9,17 @@ Oliver.
 ```
 emnsr/                     shared library
   config.py                global constants (NMAX, K, SEED)
-  arithmetic.py            phi, mu, sigma, squarefree/prime tests
+  nt_features.py           phi, mu, sigma, squarefree/prime tests
   data.py                  download + parse the LMFDB Maass newform data
-  geometry.py              Vol(X_0), Vol(X_1), genus, geodesic lengths
-  spectral.py              spectral-parameter arrays (X_0(N), Bolza, Klein)
+  geometric_features.py    Vol(X_0), Vol(X_1), genus, geodesic lengths
+  spectral_features.py     spectral-parameter arrays (X_0(N), Bolza, Klein)
   features.py              geodesic length spectra + MLP feature vectors
 
 symbolic_regression/       symbolic regression for Maass newforms
-  example.py               worked example: recover the Prime Number Theorem
-  features.py, metrics.py, plots.py, pysr_tools.py
-  ex31_geometric.py        geometric features -> r_k(N)  (volume-only law)
-  ex32_arithmetic.py       arithmetic features -> lambda_k(N)  (12k / phi law)
+  pnt_example.py           worked example: recover the Prime Number Theorem
+  features.py, utils.py    dataset builders + metrics/plots/PySR toolkit
+  example_1.py             geometric features -> r_k(N)  (volume-only law)
+  example_2.py             arithmetic features -> lambda_k(N)  (12k / phi law)
 
 nonlinear_regression/      Selberg-trace-formula-constrained regression
   stf.py                   shared trace-formula machinery
@@ -53,9 +53,9 @@ Each experiment is a module, run from the repository root:
 
 ```bash
 # Symbolic regression
-python -m symbolic_regression.example          # Prime Number Theorem demo
-python -m symbolic_regression.ex32_arithmetic  # discovers 12k / phi(N)
-python -m symbolic_regression.ex31_geometric   # volume-only law from geometry
+python -m symbolic_regression.pnt_example      # Prime Number Theorem demo
+python -m symbolic_regression.example_2        # discovers 12k / phi(N)
+python -m symbolic_regression.example_1        # volume-only law from geometry
 
 # Selberg-trace-formula regression
 python -m nonlinear_regression.poisson_s1
