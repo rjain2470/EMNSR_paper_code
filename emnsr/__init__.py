@@ -2,7 +2,8 @@
 
 Lightweight helpers (config, number-theoretic, geometric, data access) are
 re-exported here. The data-heavy arrays live in the submodules
-``emnsr.spectral_features`` and ``emnsr.features`` and are imported explicitly,
+``emnsr.spectral_features`` and ``emnsr.feature_vectors`` and are imported
+explicitly,
 since building them downloads the LMFDB/Zenodo and Bolza datasets.
 """
 
