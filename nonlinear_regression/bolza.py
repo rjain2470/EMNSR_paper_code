@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
 from emnsr import K, SEED
-from emnsr.spectral import bolza_r_vals
+from emnsr.spectral_features import bolza_r_vals
 from emnsr.features import bolza_lengths, bolza_mults
 from nonlinear_regression.stf import (
     gl_quadrature, h_bump, h_trivial, identity_term, geometric_term,
