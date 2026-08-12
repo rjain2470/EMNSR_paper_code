@@ -15,7 +15,7 @@ import numpy as np
 import urllib.request
 
 from .config import NMAX, K
-from .arithmetic import squarefree_levels
+from .nt_features import squarefree_levels
 from .data import spectral_parameters_by_level, first_k_spectral_parameters
 
 # ---- X_0(N): padded matrix of Maass newform spectral parameters ------
