@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 from emnsr import K, volume_X1, first_k_spectral_parameters
 from emnsr.spectral_features import MAASS_CACHE, squarefree_Ns
-from emnsr.features import GEO_POOL
+from emnsr.feature_vectors import GEO_POOL
 from symbolic_regression.features import build_geometric_dataset
 from symbolic_regression.utils import (evaluate, per_k_errors,
                                        plot_pred_vs_actual, plot_mse_vs_k,
