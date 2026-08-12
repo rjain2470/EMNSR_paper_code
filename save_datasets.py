@@ -12,7 +12,7 @@ Reload elsewhere with:
 import numpy as np
 
 from emnsr.features import X0N_features, bolza_features, klein_features
-from emnsr.spectral import X0N_r_vals, bolza_r_vals, klein_r_vals
+from emnsr.spectral_features import X0N_r_vals, bolza_r_vals, klein_r_vals
 
 if __name__ == "__main__":
     np.savez(
