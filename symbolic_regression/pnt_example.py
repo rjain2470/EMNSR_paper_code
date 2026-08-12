@@ -4,7 +4,7 @@ symbolic regression.
 Dependencies: numpy, sympy, pysr (PySR needs a working Julia install, which it
 provisions automatically on first use).
 
-Run:  python -m symbolic_regression.example
+Run:  python -m symbolic_regression.pnt_example
 """
 
 import numpy as np
