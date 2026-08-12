@@ -9,7 +9,7 @@ Stage B: second-level symbolic regression discovers a(k) and b(k), which resolve
 into a single closed law
     r_k(N) = a(k) / (Vol(X_1(N))^{1/4} - b(k)).
 
-Run:  python -m symbolic_regression.ex31_geometric
+Run:  python -m symbolic_regression.example_1
 """
 
 import time
@@ -18,12 +18,12 @@ import sympy as sp
 import matplotlib.pyplot as plt
 
 from emnsr import K, volume_X1, first_k_spectral_parameters
-from emnsr.spectral import MAASS_CACHE, squarefree_Ns
+from emnsr.spectral_features import MAASS_CACHE, squarefree_Ns
 from emnsr.features import GEO_POOL
 from symbolic_regression.features import build_geometric_dataset
-from symbolic_regression.metrics import evaluate, per_k_errors
-from symbolic_regression.plots import plot_pred_vs_actual, plot_mse_vs_k
-from symbolic_regression.pysr_tools import run_pysr, per_k_volume_search, SR_TIME_LIMIT
+from symbolic_regression.utils import (evaluate, per_k_errors,
+                                       plot_pred_vs_actual, plot_mse_vs_k,
+                                       run_pysr, per_k_volume_search, SR_TIME_LIMIT)
 
 
 def stage_a(cache=MAASS_CACHE, Ns=squarefree_Ns):
