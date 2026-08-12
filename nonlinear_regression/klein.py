@@ -10,7 +10,7 @@ from scipy.optimize import least_squares
 
 from emnsr import K, SEED
 from emnsr.spectral_features import klein_r_vals
-from emnsr.features import klein_lengths, klein_mults
+from emnsr.feature_vectors import klein_lengths, klein_mults
 from nonlinear_regression.stf import (
     gl_quadrature, h_bump, h_trivial, identity_term, geometric_term,
     compress_multiplicities,
