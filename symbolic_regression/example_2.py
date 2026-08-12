@@ -5,7 +5,7 @@ recovering the newform counting law lambda_k^new(N) ~ 12 k / phi(N). Weyl's law
 is plotted for comparison. Every metric and figure is computed from the
 discovered equation.
 
-Run:  python -m symbolic_regression.ex32_arithmetic
+Run:  python -m symbolic_regression.example_2
 """
 
 import time
@@ -13,12 +13,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from emnsr import phi, mu, sigma, volume_X0, first_k_spectral_parameters
-from emnsr.spectral import MAASS_CACHE, squarefree_Ns
+from emnsr.spectral_features import MAASS_CACHE, squarefree_Ns
 from emnsr.config import K
 from symbolic_regression.features import build_arithmetic_dataset
-from symbolic_regression.metrics import evaluate, mre_prime_composite
-from symbolic_regression.plots import plot_per_level_r2_hist
-from symbolic_regression.pysr_tools import run_pysr, top_equations, SR_TIME_LIMIT
+from symbolic_regression.utils import (evaluate, mre_prime_composite,
+                                       plot_per_level_r2_hist,
+                                       run_pysr, top_equations, SR_TIME_LIMIT)
 
 
 def _slope_vs_k(lam):
