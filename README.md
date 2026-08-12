@@ -13,7 +13,7 @@ emnsr/                     shared library
   data.py                  download + parse the LMFDB Maass newform data
   geometric_features.py    Vol(X_0), Vol(X_1), genus, geodesic lengths
   spectral_features.py     spectral-parameter arrays (X_0(N), Bolza, Klein)
-  features.py              geodesic length spectra + MLP feature vectors
+  feature_vectors.py       geodesic length spectra + MLP feature vectors
 
 symbolic_regression/       symbolic regression for Maass newforms
   pnt_example.py           worked example: recover the Prime Number Theorem
