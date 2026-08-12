@@ -12,7 +12,7 @@ Run:  python -m mlp.run
 import numpy as np
 import matplotlib.pyplot as plt
 
-from emnsr.spectral import X0N_r_vals, bolza_r_vals, klein_r_vals, squarefree_Ns
+from emnsr.spectral_features import X0N_r_vals, bolza_r_vals, klein_r_vals, squarefree_Ns
 from emnsr.features import X0N_features, bolza_features, klein_features
 from mlp.model import (
     train_model, evaluate_X0N_spectrum, evaluate_spectrum,
