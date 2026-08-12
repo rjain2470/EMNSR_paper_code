@@ -1,9 +1,10 @@
-"""PySR toolkit: build a regressor, turn a discovered sympy expression into a
-predictor, and the helpers used by the geometric experiment (per-k search and
-volume-form parsing).
+"""Shared utilities for the symbolic-regression experiments: evaluation metrics,
+plotting helpers, and the PySR toolkit.
 
-Each search is bounded by a runtime cap (PySR's ``timeout_in_seconds``); the best
-equation and a short Pareto tail are reported rather than the full hall of fame.
+Each metric takes a predictor (a callable X -> y_hat), so the same code scores
+any formula -- a discovered PySR model or a closed form. Each PySR search is
+bounded by a runtime cap (PySR's ``timeout_in_seconds``); the best equation and a
+short Pareto tail are reported rather than the full hall of fame.
 """
 
 import importlib.util
@@ -12,6 +13,9 @@ import sys
 import time
 import numpy as np
 import sympy as sp
+import matplotlib.pyplot as plt
+from scipy.stats import spearmanr
+from sympy import isprime
 
 if importlib.util.find_spec("pysr") is None:
     print("Installing PySR (one-time; downloads the Julia backend on first fit)...",
@@ -21,6 +25,145 @@ from pysr import PySRRegressor
 
 SR_TIME_LIMIT = 900   # runtime cap per search (seconds)
 
+
+# ---- metrics ---------------------------------------------------------
+
+def evaluate(X, y, predict, levels):
+    """Aggregate metrics for ``predict`` against ``y``.
+
+    ``levels`` is the per-row level N (passed explicitly so this works whether
+    or not N is one of the feature columns).
+    """
+    y_hat = np.asarray(predict(X), float)
+    res = y - y_hat
+    rel = np.abs(res) / y
+
+    ss_res = np.sum(res ** 2)
+    ss_tot = np.sum((y - y.mean()) ** 2)
+    r2 = 1.0 - ss_res / ss_tot
+    rho, _ = spearmanr(y, y_hat)
+
+    per_level = {}
+    for N in np.unique(levels):
+        idx = levels == N
+        if idx.sum() < 2:
+            continue
+        sr = np.sum((y[idx] - y_hat[idx]) ** 2)
+        st = np.sum((y[idx] - y[idx].mean()) ** 2)
+        per_level[int(N)] = 1.0 - sr / st if st > 0 else np.nan
+
+    return {
+        "r2": r2,
+        "mre": rel.mean() * 100.0,
+        "spearman": rho,
+        "median_per_level_r2": float(np.nanmedian(list(per_level.values()))),
+        "per_level_r2": per_level,
+        "y_hat": y_hat,
+    }
+
+
+def mre_prime_composite(y, y_hat, levels):
+    """Mean relative error (%) split by prime vs composite level. N = 1 is
+    neither prime nor composite and is excluded from both buckets."""
+    rel = np.abs(y - y_hat) / y
+    levels = np.asarray(levels)
+    prime_mask = np.array([bool(isprime(int(N))) for N in levels])
+    comp_mask = np.array([int(N) > 1 and not isprime(int(N)) for N in levels])
+    out = {}
+    out["prime"] = rel[prime_mask].mean() * 100.0 if prime_mask.any() else float("nan")
+    out["composite"] = (rel[comp_mask].mean() * 100.0
+                        if comp_mask.any() else float("nan"))
+    return out
+
+
+def per_k_errors(X, y, predict, k_col=0):
+    """Per-k MSE and MAE (X[:, k_col] holds k)."""
+    y_hat = np.asarray(predict(X), float)
+    out = {}
+    for k in np.unique(X[:, k_col]):
+        idx = X[:, k_col] == k
+        e = y[idx] - y_hat[idx]
+        out[int(k)] = {"mse": float(np.mean(e ** 2)),
+                       "mae": float(np.mean(np.abs(e))),
+                       "n": int(idx.sum())}
+    return out
+
+
+# ---- plots -----------------------------------------------------------
+
+def plot_empirical_slope(Ns, c_emp, c_model, c_weyl):
+    """Empirical slope c(N) vs 12/phi(N) vs Weyl 4pi/Vol(X_0)."""
+    fig = plt.figure(figsize=(9, 6))
+    plt.scatter(Ns, c_emp, label=r"Empirical slope $c(N)$", alpha=0.8)
+    plt.plot(Ns, c_model, color="green", label=r"$12/\varphi(N)$")
+    plt.plot(Ns, c_weyl, color="red", label=r"Weyl $4\pi/\mathrm{Vol}(X_0(N))$")
+    plt.yscale("log")
+    plt.xlabel(r"$N$")
+    plt.ylabel(r"$c(N)$")
+    plt.grid(True, which="both", alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    return fig
+
+
+def plot_pred_vs_actual(actual, predicted, N, ylabel, kmax=20):
+    """Predicted vs actual, first kmax indices at level N."""
+    n = min(kmax, len(actual), len(predicted))
+    idx = np.arange(1, n + 1)
+    w = 0.4
+    fig = plt.figure(figsize=(10, 5))
+    plt.bar(idx - w / 2, np.asarray(actual)[:n], w, label="Actual", alpha=0.85)
+    plt.bar(idx + w / 2, np.asarray(predicted)[:n], w,
+            label="Predicted (symbolic regression)", alpha=0.85)
+    plt.xlabel(r"Index $k$")
+    plt.ylabel(ylabel)
+    plt.title(rf"Maass newforms on $X_0({N})$: predicted vs actual")
+    plt.xticks(idx)
+    plt.legend()
+    plt.tight_layout()
+    return fig
+
+
+def plot_residuals_vs_level(levels, y, y_hat):
+    """Residuals (y - y_hat) against level N."""
+    fig = plt.figure(figsize=(9, 5))
+    plt.scatter(levels, y - y_hat, s=10, alpha=0.4)
+    plt.axhline(0.0, color="k", lw=0.8)
+    plt.xlabel(r"$N$")
+    plt.ylabel(r"residual $y - \hat{y}$")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    return fig
+
+
+def plot_per_level_r2_hist(per_level_r2, bins=20):
+    """Distribution of per-level R^2."""
+    vals = np.array([v for v in per_level_r2.values() if np.isfinite(v)])
+    fig = plt.figure(figsize=(8, 5))
+    plt.hist(vals, bins=bins, alpha=0.8)
+    plt.axvline(np.median(vals), color="red",
+                label=f"median = {np.median(vals):.3f}")
+    plt.xlabel(r"per-level $R^2$")
+    plt.ylabel("count")
+    plt.legend()
+    plt.tight_layout()
+    return fig
+
+
+def plot_mse_vs_k(per_k):
+    """MSE as a function of k (per_k from per_k_errors)."""
+    ks = sorted(per_k)
+    mse = [per_k[k]["mse"] for k in ks]
+    fig = plt.figure(figsize=(9, 5))
+    plt.plot(ks, mse, marker="o", ms=3)
+    plt.xlabel(r"$k$")
+    plt.ylabel("MSE")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    return fig
+
+
+# ---- PySR toolkit ----------------------------------------------------
 
 def make_pysr_model(variable_names, niterations=200, timeout_s=SR_TIME_LIMIT,
                     maxsize=24, maxdepth=6, population_size=100, seed=0,
