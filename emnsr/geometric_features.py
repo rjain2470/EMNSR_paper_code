@@ -9,7 +9,7 @@ import math
 from math import pi
 from sympy import factorint, divisors
 
-from .arithmetic import phi
+from .nt_features import phi
 
 
 def index_gamma0(N: int) -> int:
