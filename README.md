@@ -80,3 +80,7 @@ python -m mlp.run
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Acknowledgements
+
+The experiments in this repo were run using data from the [LMFDB](https://www.lmfdb.org/). It was created with the assistance of GPT-5.5 and Claude Opus 4.8.
