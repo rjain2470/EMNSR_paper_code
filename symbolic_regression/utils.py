@@ -3,8 +3,9 @@ plotting helpers, and the PySR toolkit.
 
 Each metric takes a predictor (a callable X -> y_hat), so the same code scores
 any formula -- a discovered PySR model or a closed form. Each PySR search is
-bounded by a runtime cap (PySR's ``timeout_in_seconds``); the best equation and a
-short Pareto tail are reported rather than the full hall of fame.
+bounded by a runtime cap (PySR's ``timeout_in_seconds``); the Pareto front is
+reported simplest-first and the reported law is chosen with ``select_law``,
+rather than PySR's default 'best' pick.
 """
 
 import importlib.util
@@ -24,6 +25,16 @@ if importlib.util.find_spec("pysr") is None:
 from pysr import PySRRegressor
 
 SR_TIME_LIMIT = 900   # runtime cap per search (seconds)
+
+# Loss functions (PySR elementwise_loss strings; x = prediction, y = target).
+# ABS_LOSS -- plain squared error, appropriate when the target has a uniform
+#             scale. REL_LOSS -- squared RELATIVE error, appropriate when the
+#             target spans orders of magnitude and the law is asymptotic (as
+#             for lambda_k(N): under ABS_LOSS the largest eigenvalues dominate
+#             and bias the recovered leading coefficient away from its
+#             asymptotic value; REL_LOSS weights every (k, N) equally).
+ABS_LOSS = "loss(x, y) = (x - y)^2"
+REL_LOSS = "loss(x, y) = ((x - y) / y)^2"
 
 
 # ---- metrics ---------------------------------------------------------
@@ -167,10 +178,12 @@ def plot_mse_vs_k(per_k):
 
 def make_pysr_model(variable_names, niterations=200, timeout_s=SR_TIME_LIMIT,
                     maxsize=24, maxdepth=6, population_size=100, seed=0,
-                    parallelism="serial"):
+                    parallelism="serial", loss=ABS_LOSS):
     """A PySRRegressor with the standard operator set and a runtime cap.
     ``parallelism='serial'`` gives a deterministic search; ``'multithreading'``
-    is faster (used for the many per-k searches)."""
+    is faster (used for the many per-k searches). ``loss`` is the
+    elementwise_loss string (ABS_LOSS by default; pass REL_LOSS for
+    order-of-magnitude targets such as lambda_k(N))."""
     serial = (parallelism == "serial")
     return PySRRegressor(
         niterations=niterations,
@@ -180,7 +193,7 @@ def make_pysr_model(variable_names, niterations=200, timeout_s=SR_TIME_LIMIT,
         maxsize=maxsize,
         maxdepth=maxdepth,
         population_size=population_size,
-        elementwise_loss="loss(x, y) = (x - y)^2",
+        elementwise_loss=loss,
         deterministic=serial,
         parallelism=parallelism,
         random_state=(seed if serial else None),
@@ -200,11 +213,43 @@ def sympy_predictor(expr, variable_names):
     return predict
 
 
-def top_equations(model, n=6):
-    """Compact Pareto tail (complexity / loss / equation)."""
+def pareto_front(model, n=None):
+    """Full Pareto front (complexity / loss / score / equation), SIMPLEST first.
+    PySR sorts ``equations_`` by ascending complexity, so the clean low-complexity
+    laws sit at the HEAD of the front; a ``.tail()`` would surface only the most
+    complex, over-fit end (which is not what we want to report)."""
     df = model.equations_
     cols = [c for c in ["complexity", "loss", "score", "equation"] if c in df.columns]
-    return df[cols].tail(n).to_string(index=False)
+    out = df[cols] if n is None else df[cols].head(n)
+    return out.to_string(index=False)
+
+
+def select_law(model, variable_names, allowed, require=(), prefer="loss"):
+    """From the Pareto front, return (index, expr, predictor) for the equation
+    whose free symbols are a SUBSET of ``allowed`` and a SUPERSET of ``require``.
+    ``prefer='loss'`` -> the lowest-loss such equation; ``prefer='complexity'``
+    -> the SIMPLEST such equation (lowest complexity), useful for reporting the
+    cleanest closed form (e.g. the pure counting law c*k/phi rather than a
+    marginally-better c*k/phi + const). Returns None if no equation qualifies.
+    This replaces PySR's default 'best' pick, which trades accuracy for extra
+    complexity and lands on a messier equation."""
+    df = model.equations_
+    allowed, require = set(allowed), set(require)
+    cand = []
+    for i in range(len(df)):
+        try:
+            expr = model.sympy(i)
+        except Exception:
+            continue
+        syms = {s.name for s in expr.free_symbols}
+        if syms and syms.issubset(allowed) and require.issubset(syms):
+            cand.append((i, expr, float(df.iloc[i]["loss"]),
+                         int(df.iloc[i]["complexity"])))
+    if not cand:
+        return None
+    key = (lambda c: c[3]) if prefer == "complexity" else (lambda c: c[2])
+    i, expr, _, _ = min(cand, key=key)
+    return i, expr, sympy_predictor(expr, variable_names)
 
 
 def run_pysr(X, y, variable_names, **kw):
@@ -250,11 +295,52 @@ def parse_volume_form(expr, vol_samples, vol_name="vol_X1", r2_tol=0.9995):
     return 1.0 / c1, -c0 / c1             # expr == a / (w - b)
 
 
+def parse_volume_form_sq(expr, vol_samples, vol_name="vol_X1", r2_tol=0.9995):
+    """Lambda-native volume-only law. If ``expr`` is (numerically)
+    a / (sqrt(Vol) - b) in the volume ALONE, return (a, b); else None.
+    Targeting the eigenvalue lambda directly, PySR prefers this
+    reciprocal-in-sqrt(Vol) form (leading order lambda ~ a/sqrt(Vol)); it is the
+    eigenvalue-level analogue of the r-law r ~ a/(Vol^(1/4)-b), since
+    lambda = r^2 + 1/4 ~ a^2/(Vol^(1/4)-b)^2 ~ a/sqrt(Vol). Test: expr depends
+    only on ``vol_name``, is nonzero on the vol range, and 1/expr(vol) is affine
+    in u = sqrt(Vol) (R^2 >= r2_tol)."""
+    if expr is None:
+        return None
+    syms = {s.name: s for s in expr.free_symbols}
+    if vol_name not in syms or (set(syms) - {vol_name}):
+        return None                      # must depend on the volume, and nothing else
+    v = syms[vol_name]
+    try:
+        f = sp.lambdify(v, expr, modules=["numpy"])
+        y = np.asarray(f(np.asarray(vol_samples, float)), float)
+    except Exception:
+        return None
+    if y.shape != vol_samples.shape or not np.all(np.isfinite(y)) or np.any(y == 0):
+        return None
+    u = np.asarray(vol_samples, float) ** 0.5    # u = sqrt(Vol)
+    inv = 1.0 / y                                # affine in u  iff  y == a/(u - b)
+    A = np.vstack([u, np.ones_like(u)]).T
+    (c1, c0), *_ = np.linalg.lstsq(A, inv, rcond=None)
+    pred = A @ np.array([c1, c0])
+    ss_tot = np.sum((inv - inv.mean()) ** 2)
+    if ss_tot <= 0:
+        return None
+    r2 = 1.0 - np.sum((inv - pred) ** 2) / ss_tot
+    if r2 < r2_tol or abs(c1) < 1e-9:
+        return None
+    return 1.0 / c1, -c0 / c1                      # expr == a / (sqrt(Vol) - b)
+
+
 def per_k_volume_search(X, y, variable_names, k_values, k_col=0, vol_col=1,
                         deadline_s=SR_TIME_LIMIT, per_k_iters=30, seed=0,
-                        maxsize=16, population_size=40, vol_name="vol_X1"):
+                        maxsize=16, population_size=40, vol_name="vol_X1",
+                        square=False, loss=ABS_LOSS):
     """Run PySR at each k (the k column is dropped) under a shared wall-clock
-    deadline. Returns {k: {expr, a, b, matched}} for whatever finished in time."""
+    deadline. ``square=True`` accepts the lambda-native volume law
+    a/(sqrt(Vol)-b) (via parse_volume_form_sq); otherwise the r-native
+    a/(Vol^(1/4)-b) form. Returns {k: {expr, a, b, matched}} for whatever
+    finished in time (``a`` holds the amplitude of whichever form matched)."""
+    matcher = parse_volume_form_sq if square else parse_volume_form
     t0 = time.time()
     cols = [j for j in range(X.shape[1]) if j != k_col]
     sub_names = [variable_names[j] for j in cols]
@@ -272,11 +358,11 @@ def per_k_volume_search(X, y, variable_names, k_values, k_col=0, vol_col=1,
         model = make_pysr_model(sub_names, niterations=per_k_iters,
                                 timeout_s=max(5.0, deadline_s - elapsed),
                                 maxsize=maxsize, population_size=population_size,
-                                seed=seed, parallelism="multithreading")
+                                seed=seed, parallelism="multithreading", loss=loss)
         model.fit(X[idx][:, cols], y[idx], variable_names=sub_names)
         expr = model.sympy()
         vol_samples = np.unique(vol_all[idx])
-        ab = parse_volume_form(expr, vol_samples, vol_name=vol_name)
+        ab = matcher(expr, vol_samples, vol_name=vol_name)
         results[int(k)] = dict(expr=expr, matched=ab is not None,
                                a=(ab[0] if ab else np.nan),
                                b=(ab[1] if ab else np.nan))
