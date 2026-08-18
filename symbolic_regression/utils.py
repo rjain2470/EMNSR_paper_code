@@ -3,8 +3,9 @@ plotting helpers, and the PySR toolkit.
 
 Each metric takes a predictor (a callable X -> y_hat), so the same code scores
 any formula -- a discovered PySR model or a closed form. Each PySR search is
-bounded by a runtime cap (PySR's ``timeout_in_seconds``); the best equation and a
-short Pareto tail are reported rather than the full hall of fame.
+bounded by a runtime cap (PySR's ``timeout_in_seconds``); the Pareto front is
+reported simplest-first and the reported law is chosen with ``select_law``,
+rather than PySR's default 'best' pick.
 """
 
 import importlib.util
@@ -210,13 +211,6 @@ def sympy_predictor(expr, variable_names):
         out = f(*[X[:, i] for i in range(len(variable_names))])
         return np.broadcast_to(np.asarray(out, float), (X.shape[0],)).astype(float)
     return predict
-
-
-def top_equations(model, n=6):
-    """Compact Pareto tail (complexity / loss / equation)."""
-    df = model.equations_
-    cols = [c for c in ["complexity", "loss", "score", "equation"] if c in df.columns]
-    return df[cols].tail(n).to_string(index=False)
 
 
 def pareto_front(model, n=None):
